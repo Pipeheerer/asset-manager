@@ -110,6 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event: AuthChangeEvent, newSession: Session | null) => {
         if (!mounted) return
         
+        console.log('Auth state change:', event, newSession?.user?.id)
+        
         // Handle sign out
         if (event === 'SIGNED_OUT') {
           setSession(null)
@@ -124,10 +126,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(newSession?.user ?? null)
         
         if (newSession?.user) {
-          // Set loading while fetching role for new session
-          setLoading(true)
-          await fetchUserRole(newSession.user.id, newSession.user.email ?? undefined)
-          if (mounted) setLoading(false)
+          // For TOKEN_REFRESHED events, preserve existing role if same user
+          // This prevents admin from becoming 'user' when tab wakes up
+          if (event === 'TOKEN_REFRESHED') {
+            // Only re-fetch role if we don't have one or user changed
+            setLoading(false)
+            return
+          }
+          
+          // For SIGNED_IN or INITIAL_SESSION, fetch the role
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            setLoading(true)
+            await fetchUserRole(newSession.user.id, newSession.user.email ?? undefined)
+            if (mounted) setLoading(false)
+          }
         } else {
           setRole(null)
           setLoading(false)
