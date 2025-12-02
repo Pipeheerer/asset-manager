@@ -52,7 +52,7 @@ export async function middleware(req: NextRequest) {
   try {
     const sessionPromise = supabase.auth.getSession()
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Session check timeout')), 5000)
+      setTimeout(() => reject(new Error('Session check timeout')), 2000)
     )
     const result = await Promise.race([sessionPromise, timeoutPromise]) as any
     session = result?.data?.session
