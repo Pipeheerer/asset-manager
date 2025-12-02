@@ -318,8 +318,8 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
             "mt-3 flex items-center gap-3 rounded-lg bg-gray-800/50 p-2",
             collapsed && "justify-center"
           )}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-sm font-medium text-white">
-              {user?.email?.charAt(0).toUpperCase()}
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-900/50">
+              <Shield className="h-4 w-4 text-purple-300" />
             </div>
             {!collapsed && (
               <div className="flex-1 overflow-hidden">

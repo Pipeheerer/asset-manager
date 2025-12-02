@@ -37,20 +37,86 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   ])
 }
 
+// Role caching helpers to persist role across tab wake/sleep
+const ROLE_CACHE_KEY = 'asset_manager_user_role'
+
+function getCachedRole(userId: string): 'admin' | 'user' | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const cached = localStorage.getItem(ROLE_CACHE_KEY)
+    if (cached) {
+      const data = JSON.parse(cached)
+      // Only return cached role if it's for the same user and not older than 24 hours
+      if (data.userId === userId && Date.now() - data.timestamp < 24 * 60 * 60 * 1000) {
+        return data.role
+      }
+    }
+  } catch (e) {
+    console.error('Error reading cached role:', e)
+  }
+  return null
+}
+
+function setCachedRole(userId: string, role: 'admin' | 'user') {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({
+      userId,
+      role,
+      timestamp: Date.now()
+    }))
+  } catch (e) {
+    console.error('Error caching role:', e)
+  }
+}
+
+function clearCachedRole() {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(ROLE_CACHE_KEY)
+  } catch (e) {
+    console.error('Error clearing cached role:', e)
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<'admin' | 'user' | null>(null)
 
-  const fetchUserRole = useCallback(async (userId: string, email?: string) => {
+  const fetchUserRole = useCallback(async (userId: string, email?: string, useCache = true) => {
     try {
-      // Add 3s timeout to prevent hanging
-      const userRole = await withTimeout(getUserRole(userId, email), 3000, 'user' as const)
-      setRole(userRole)
+      // Check cache first to prevent role flicker on tab wake
+      if (useCache) {
+        const cachedRole = getCachedRole(userId)
+        if (cachedRole) {
+          console.log('Using cached role:', cachedRole)
+          setRole(cachedRole)
+          return
+        }
+      }
+      
+      // Fetch from DB with 5s timeout (increased for reliability)
+      const userRole = await withTimeout(getUserRole(userId, email), 5000, null)
+      
+      if (userRole) {
+        setRole(userRole)
+        setCachedRole(userId, userRole)
+      } else {
+        // Timeout hit - check cache as fallback before defaulting to 'user'
+        const cachedRole = getCachedRole(userId)
+        if (cachedRole) {
+          setRole(cachedRole)
+        } else {
+          setRole('user')
+        }
+      }
     } catch (error) {
       console.error('Error fetching user role:', error)
-      setRole('user')
+      // On error, check cache before defaulting
+      const cachedRole = getCachedRole(userId)
+      setRole(cachedRole || 'user')
     }
   }, [])
 
@@ -161,6 +227,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRole(null)
       setLoading(false)
       
+      // Clear cached role
+      clearCachedRole()
+      
       // Sign out from Supabase with scope 'local' to clear all sessions
       await supabase.auth.signOut({ scope: 'local' })
       
@@ -168,6 +237,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.location.href = '/auth/goodbye'
     } catch (error) {
       console.error('Error signing out:', error)
+      // Clear cache even on error
+      clearCachedRole()
       // Force redirect even if signOut fails
       window.location.href = '/auth/goodbye'
     }
