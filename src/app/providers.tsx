@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { Session, User, AuthChangeEvent } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { getUserRole } from '@/lib/database'
@@ -29,16 +29,24 @@ export function triggerRefresh() {
   refreshCallbacks.forEach(cb => cb())
 }
 
+// Helper to add timeout to promises
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+  ])
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState<'admin' | 'user' | null>(null)
-  const initializedRef = useRef(false)
 
   const fetchUserRole = useCallback(async (userId: string, email?: string) => {
     try {
-      const userRole = await getUserRole(userId, email)
+      // Add 3s timeout to prevent hanging
+      const userRole = await withTimeout(getUserRole(userId, email), 3000, 'user' as const)
       setRole(userRole)
     } catch (error) {
       console.error('Error fetching user role:', error)
@@ -47,13 +55,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // Prevent double initialization in strict mode
-    if (initializedRef.current) return
-    initializedRef.current = true
+    let mounted = true
 
     const initializeAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
+        // Add timeout to session check to prevent hanging
+        const sessionPromise = supabase.auth.getSession()
+        const result = await withTimeout(sessionPromise, 3000, { data: { session: null }, error: null })
+        
+        if (!mounted) return
+        
+        const { data: { session }, error } = result
         
         if (error) {
           console.error('Error getting session:', error)
@@ -61,10 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (error.message?.includes('Refresh Token') || (error as any).code === 'refresh_token_not_found') {
             console.log('Invalid refresh token, signing out...')
             await supabase.auth.signOut()
-            setSession(null)
-            setUser(null)
-            setRole(null)
           }
+          setSession(null)
+          setUser(null)
+          setRole(null)
           setLoading(false)
           return
         }
@@ -74,25 +86,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (session?.user) {
           await fetchUserRole(session.user.id, session.user.email ?? undefined)
+        } else {
+          setRole(null)
         }
       } catch (error: any) {
         console.error('Error initializing auth:', error)
-        // Handle auth errors by clearing state
-        if (error?.code === 'refresh_token_not_found' || error?.message?.includes('Refresh Token')) {
-          await supabase.auth.signOut()
+        // Clear state on any error to prevent stuck loading
+        if (mounted) {
           setSession(null)
           setUser(null)
           setRole(null)
         }
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
+      async (event: AuthChangeEvent, newSession: Session | null) => {
+        if (!mounted) return
+        
         // Handle sign out
         if (event === 'SIGNED_OUT') {
           setSession(null)
@@ -103,20 +120,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Handle sign in or token refresh
-        setSession(session)
-        setUser(session?.user ?? null)
+        setSession(newSession)
+        setUser(newSession?.user ?? null)
         
-        if (session?.user) {
-          await fetchUserRole(session.user.id, session.user.email ?? undefined)
+        if (newSession?.user) {
+          // Set loading while fetching role for new session
+          setLoading(true)
+          await fetchUserRole(newSession.user.id, newSession.user.email ?? undefined)
+          if (mounted) setLoading(false)
         } else {
           setRole(null)
+          setLoading(false)
         }
-        
-        setLoading(false)
       }
     )
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
   }, [fetchUserRole])
@@ -127,11 +147,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       setSession(null)
       setRole(null)
+      setLoading(false)
       
-      // Sign out from Supabase
-      await supabase.auth.signOut()
+      // Sign out from Supabase with scope 'local' to clear all sessions
+      await supabase.auth.signOut({ scope: 'local' })
       
-      // Redirect to goodbye page for a friendly farewell
+      // Clear any stale cookies by forcing a clean redirect
       window.location.href = '/auth/goodbye'
     } catch (error) {
       console.error('Error signing out:', error)
