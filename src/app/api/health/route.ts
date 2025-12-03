@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    // Basic health check
+    
     const healthData = {
       status: 'healthy',
       timestamp: new Date().toISOString(),

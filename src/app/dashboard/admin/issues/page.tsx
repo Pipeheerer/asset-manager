@@ -93,7 +93,7 @@ export default function AdminIssuesPage() {
     }
   }
 
-  // Only admin access
+ //admin
   if (role !== 'admin') {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">

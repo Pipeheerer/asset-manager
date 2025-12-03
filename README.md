@@ -1,6 +1,6 @@
 # Asset Manager
 
-A production-grade full-stack web application for enterprise asset management built with Next.js and Supabase.
+A Demo full-stack web application for enterprise asset management built with Next.js and Supabase.
 
 ## Features
 
@@ -138,6 +138,4 @@ The application includes default categories and departments:
 4. Test thoroughly
 5. Submit a pull request
 
-## License
 
-This project is licensed under the MIT License.

@@ -37,7 +37,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger to auto-update asset maintenance dates
+-- Trigger auto-update asset maintenance dates
 DROP TRIGGER IF EXISTS trigger_update_maintenance_dates ON maintenance;
 CREATE TRIGGER trigger_update_maintenance_dates
   AFTER INSERT OR UPDATE ON maintenance

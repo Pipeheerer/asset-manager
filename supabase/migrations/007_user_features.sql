@@ -1,10 +1,4 @@
--- Migration: User Dashboard Features
--- Tables for asset requests and issue reports
 
--- ================================================
--- Asset Requests Table
--- Users can request new assets, admins manage them
--- ================================================
 CREATE TABLE IF NOT EXISTS asset_requests (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -23,10 +17,7 @@ CREATE TABLE IF NOT EXISTS asset_requests (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ================================================
--- Issue Reports Table  
--- Users report problems with their assets
--- ================================================
+
 CREATE TABLE IF NOT EXISTS issue_reports (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -43,9 +34,7 @@ CREATE TABLE IF NOT EXISTS issue_reports (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ================================================
--- Indexes for performance
--- ================================================
+
 CREATE INDEX IF NOT EXISTS idx_asset_requests_user_id ON asset_requests(user_id);
 CREATE INDEX IF NOT EXISTS idx_asset_requests_status ON asset_requests(status);
 CREATE INDEX IF NOT EXISTS idx_asset_requests_created_at ON asset_requests(created_at DESC);
@@ -55,9 +44,7 @@ CREATE INDEX IF NOT EXISTS idx_issue_reports_asset_id ON issue_reports(asset_id)
 CREATE INDEX IF NOT EXISTS idx_issue_reports_status ON issue_reports(status);
 CREATE INDEX IF NOT EXISTS idx_issue_reports_created_at ON issue_reports(created_at DESC);
 
--- ================================================
--- RLS Policies for asset_requests
--- ================================================
+
 ALTER TABLE asset_requests ENABLE ROW LEVEL SECURITY;
 
 -- Users can view their own requests
@@ -84,9 +71,7 @@ CREATE POLICY "Admins can update all requests" ON asset_requests
         EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
     );
 
--- ================================================
--- RLS Policies for issue_reports
--- ================================================
+
 ALTER TABLE issue_reports ENABLE ROW LEVEL SECURITY;
 
 -- Users can view their own reports
@@ -116,9 +101,6 @@ CREATE POLICY "Admins can update all issues" ON issue_reports
         EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
     );
 
--- ================================================
--- Triggers for updated_at
--- ================================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -139,8 +121,6 @@ CREATE TRIGGER update_issue_reports_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- ================================================
--- Grant permissions
--- ================================================
+
 GRANT ALL ON asset_requests TO authenticated;
 GRANT ALL ON issue_reports TO authenticated;

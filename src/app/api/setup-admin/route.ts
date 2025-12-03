@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get user by email
+    
     const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers()
     
     if (authError) throw authError

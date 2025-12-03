@@ -29,7 +29,7 @@ export function triggerRefresh() {
   refreshCallbacks.forEach(cb => cb())
 }
 
-// Helper to add timeout to promises
+//  to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([
     promise,

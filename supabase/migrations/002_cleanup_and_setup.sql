@@ -1,4 +1,4 @@
--- Clean up and recreate database setup
+--  database setup
 -- This handles cases where some policies already exist
 
 -- Drop existing policies if they exist

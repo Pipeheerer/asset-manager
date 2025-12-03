@@ -1,10 +1,4 @@
--- FRESH DATABASE SETUP
--- Run this in Supabase SQL Editor
--- It safely handles existing tables and policies
 
--- =====================
--- STEP 1: DROP ALL EXISTING POLICIES
--- =====================
 DO $$ 
 DECLARE
     r RECORD;
@@ -14,9 +8,7 @@ BEGIN
     END LOOP;
 END $$;
 
--- =====================
--- STEP 2: CREATE TABLES (if not exist)
--- =====================
+
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -53,17 +45,13 @@ CREATE TABLE IF NOT EXISTS assets (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- =====================
--- STEP 3: DISABLE RLS TEMPORARILY (for easier setup)
--- =====================
+
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE departments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE assets DISABLE ROW LEVEL SECURITY;
 
--- =====================
--- STEP 4: INSERT DEFAULT DATA
--- =====================
+
 
 -- Default categories
 INSERT INTO categories (name) VALUES 
@@ -77,9 +65,7 @@ INSERT INTO departments (name) VALUES
   ('Operations'), ('Customer Service'), ('Executive'), ('R&D'), ('Other')
 ON CONFLICT (name) DO NOTHING;
 
--- =====================
--- STEP 5: VERIFY SETUP
--- =====================
+
 SELECT 'Setup Complete!' as status;
 SELECT 'Tables created:' as info;
 SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('users', 'categories', 'departments', 'assets');

@@ -1,5 +1,4 @@
--- Simple test to check if database is working
--- This will tell us what's already set up
+
 
 -- Check if tables exist
 SELECT 

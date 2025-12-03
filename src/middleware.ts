@@ -58,7 +58,7 @@ export async function middleware(req: NextRequest) {
     session = result?.data?.session
   } catch (error) {
     console.error('Session check failed:', error)
-    // On error, allow access to prevent blocking - auth pages will handle properly
+   
   }
 
   // Get the pathname
