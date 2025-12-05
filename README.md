@@ -5,7 +5,9 @@ A Demo full-stack web application for enterprise asset management built with Nex
 ### Live Demo
 View Live App: https://asset-manager-system.vercel.app/
 
-![Admin dashboard](admin-dashboard.png)
+## Screenshots:
+
+![Admin Dashboard](Admin%20dashboard.png)
 
 
 ## Features
