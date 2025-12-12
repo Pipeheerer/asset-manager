@@ -3,6 +3,7 @@
 import { useAuth } from '@/app/providers'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { UserLayout } from '@/components/layout/user-layout'
+import { SessionTimeoutWarning } from '@/components/session-timeout-warning'
 import { Loader2 } from 'lucide-react'
 
 export default function DashboardLayoutWrapper({
@@ -23,11 +24,21 @@ export default function DashboardLayoutWrapper({
     )
   }
 
-  // Admin users get the full admin layout
+  // Admin users get the full admin layout with 15 min timeout
   if (role === 'admin') {
-    return <AdminLayout>{children}</AdminLayout>
+    return (
+      <>
+        <SessionTimeoutWarning timeoutMinutes={15} warningMinutes={2} />
+        <AdminLayout>{children}</AdminLayout>
+      </>
+    )
   }
 
-  // Regular users get the user layout
-  return <UserLayout>{children}</UserLayout>
+  // Regular users get the user layout with 15 min timeout
+  return (
+    <>
+      <SessionTimeoutWarning timeoutMinutes={15} warningMinutes={2} />
+      <UserLayout>{children}</UserLayout>
+    </>
+  )
 }

@@ -59,7 +59,10 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  ShieldCheck,
+  Loader2,
+  ExternalLink
 } from 'lucide-react'
 
 // Status badge component
@@ -141,6 +144,10 @@ export default function AssetsPage() {
   const [assignData, setAssignData] = useState({ user_id: '', notes: '' })
   const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Warranty registration state
+  const [warrantyStatus, setWarrantyStatus] = useState<Record<string, 'registered' | 'checking' | null>>({})
+  const [isRegisteringWarranty, setIsRegisteringWarranty] = useState(false)
 
   const isAdmin = role === 'admin'
 
@@ -168,6 +175,31 @@ export default function AssetsPage() {
       fetchData()
     }
   }, [user, fetchData])
+
+  // Check warranty status for all assets when they load
+  useEffect(() => {
+    const checkAllWarrantyStatus = async () => {
+      if (assets.length === 0) return
+      
+      for (const asset of assets) {
+        if (warrantyStatus[asset.id] === undefined) {
+          try {
+            const response = await fetch(`/api/warranty/register?assetId=${asset.id}`)
+            const data = await response.json()
+            if (data.success && data.data) {
+              setWarrantyStatus(prev => ({ ...prev, [asset.id]: 'registered' }))
+            } else {
+              setWarrantyStatus(prev => ({ ...prev, [asset.id]: null }))
+            }
+          } catch {
+            setWarrantyStatus(prev => ({ ...prev, [asset.id]: null }))
+          }
+        }
+      }
+    }
+    
+    checkAllWarrantyStatus()
+  }, [assets])
 
   const handleCreateAsset = async () => {
     if (isSubmitting) return
@@ -333,9 +365,72 @@ export default function AssetsPage() {
     setShowAssignModal(true)
   }
 
-  const openDetailModal = (asset: AssetWithDetails) => {
+  const openDetailModal = async (asset: AssetWithDetails) => {
     setSelectedAsset(asset)
     setShowDetailModal(true)
+    
+    // Check warranty status when opening detail modal
+    if (!warrantyStatus[asset.id]) {
+      setWarrantyStatus(prev => ({ ...prev, [asset.id]: 'checking' }))
+      try {
+        const response = await fetch(`/api/warranty/register?assetId=${asset.id}`)
+        const data = await response.json()
+        if (data.success && data.data) {
+          setWarrantyStatus(prev => ({ ...prev, [asset.id]: 'registered' }))
+        } else {
+          setWarrantyStatus(prev => ({ ...prev, [asset.id]: null }))
+        }
+      } catch {
+        setWarrantyStatus(prev => ({ ...prev, [asset.id]: null }))
+      }
+    }
+  }
+
+  const registerWarranty = async (asset: AssetWithDetails) => {
+    if (!user?.email) return
+    
+    setIsRegisteringWarranty(true)
+    try {
+      const response = await fetch('/api/warranty/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          asset_id: asset.id,
+          asset_name: asset.name,
+          serial_number: asset.serial_number || null,
+          category: asset.category?.name || null,
+          department: asset.department?.name || null,
+          location: asset.location || null,
+          date_purchased: asset.date_purchased || null,
+          cost: asset.cost || null,
+          // Warranty specific fields - use purchase date as warranty start if not specified
+          warranty_start: asset.date_purchased || null,
+          warranty_expiry: asset.warranty_expiry || null,
+          warranty_notes: asset.warranty_notes || null,
+          // These fields can be added in Warranty Centre later
+          warranty_provider: null,
+          warranty_type: 'manufacturer',
+          warranty_terms: null,
+          warranty_contact: null,
+          warranty_claim_url: null,
+          registered_by_email: user.email
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        setWarrantyStatus(prev => ({ ...prev, [asset.id]: 'registered' }))
+        alert('Warranty registered successfully! You can add more details in the Warranty Centre.')
+      } else {
+        alert(data.message || 'Failed to register warranty')
+      }
+    } catch (error) {
+      console.error('Warranty registration error:', error)
+      alert('Failed to connect to warranty service')
+    } finally {
+      setIsRegisteringWarranty(false)
+    }
   }
 
   const clearFilters = () => {
@@ -363,11 +458,27 @@ export default function AssetsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleExportCSV}>
+          <Button 
+            variant="outline" 
+            onClick={handleExportCSV}
+            className="border-slate-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 dark:border-slate-600 dark:hover:border-blue-500 dark:hover:bg-blue-950 dark:hover:text-blue-400 transition-all duration-200"
+          >
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <Button onClick={() => { setFormData(initialFormData); setWizardStep(0); setFormError(''); setIsSubmitting(false); setShowCreateModal(true) }}>
+          <Button 
+            variant="outline"
+            onClick={() => window.open('https://server11.eport.ws/logout', '_blank')}
+            className="border-emerald-300 bg-emerald-50 text-emerald-700 hover:border-emerald-500 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 dark:hover:border-emerald-500 dark:hover:bg-emerald-900 dark:hover:text-emerald-300 transition-all duration-200"
+          >
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            Warranty Centre
+            <ExternalLink className="h-3 w-3 ml-1" />
+          </Button>
+          <Button 
+            onClick={() => { setFormData(initialFormData); setWizardStep(0); setFormError(''); setIsSubmitting(false); setShowCreateModal(true) }}
+            className="bg-blue-600 hover:bg-blue-700 hover:scale-105 transition-all duration-200"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Asset
           </Button>
@@ -546,6 +657,33 @@ export default function AssetsPage() {
                           Insurance {new Date(asset.insurance_expiry) < new Date() ? 'Expired' : 'Expiring Soon'}
                         </Badge>
                       )}
+                      
+                      {/* Warranty Registration Status/Button */}
+                      {warrantyStatus[asset.id] === 'registered' ? (
+                        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1">
+                          <ShieldCheck className="h-3 w-3" />
+                          Warranty Registered
+                        </Badge>
+                      ) : warrantyStatus[asset.id] === 'checking' ? (
+                        <Badge variant="outline" className="flex items-center gap-1 text-muted-foreground">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Checking...
+                        </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); registerWarranty(asset); }}
+                          disabled={isRegisteringWarranty}
+                          className="h-6 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white border-0"
+                        >
+                          {isRegisteringWarranty ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <ShieldCheck className="h-3 w-3 mr-1" />
+                          )}
+                          Register Warranty
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -602,9 +740,8 @@ export default function AssetsPage() {
             <DialogTitle>{showEditModal ? 'Edit Asset' : 'Create New Asset'}</DialogTitle>
             <DialogDescription>
               {showEditModal ? 'Update asset information' : (
-                wizardStep === 0 ? 'Step 1 of 3: Basic Information' :
-                wizardStep === 1 ? 'Step 2 of 3: Warranty Details (Optional)' :
-                'Step 3 of 3: Insurance Details (Optional)'
+                wizardStep === 0 ? 'Step 1 of 2: Basic Information' :
+                'Step 2 of 2: Insurance Details (Optional)'
               )}
             </DialogDescription>
           </DialogHeader>
@@ -613,7 +750,7 @@ export default function AssetsPage() {
           {!showEditModal && (
             <div className="flex flex-col items-center gap-3 py-4 px-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-600">
               <div className="flex items-center gap-2">
-                {[0, 1, 2].map((step) => (
+                {[0, 1].map((step) => (
                   <div key={step} className="flex items-center">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-md ${
                       wizardStep === step 
@@ -624,17 +761,19 @@ export default function AssetsPage() {
                     }`}>
                       {wizardStep > step ? <CheckCircle className="h-5 w-5" /> : step + 1}
                     </div>
-                    {step < 2 && (
-                      <div className={`w-16 h-1.5 mx-2 rounded ${wizardStep > step ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                    {step < 1 && (
+                      <div className={`w-20 h-1.5 mx-2 rounded ${wizardStep > step ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'}`} />
                     )}
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between w-full max-w-sm text-xs font-semibold">
+              <div className="flex justify-between w-full max-w-xs text-xs font-semibold">
                 <span className={wizardStep === 0 ? 'text-indigo-700 dark:text-indigo-400' : wizardStep > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}>Basic Info</span>
-                <span className={wizardStep === 1 ? 'text-indigo-700 dark:text-indigo-400' : wizardStep > 1 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}>Warranty</span>
-                <span className={wizardStep === 2 ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}>Insurance</span>
+                <span className={wizardStep === 1 ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}>Insurance</span>
               </div>
+              <p className="text-xs text-muted-foreground text-center mt-1">
+                💡 Warranty registration is now handled in the <a href="https://server11.eport.ws/logout" target="_blank" className="text-emerald-600 hover:underline font-medium">Warranty Centre</a>
+              </p>
             </div>
           )}
           
@@ -925,38 +1064,8 @@ export default function AssetsPage() {
                   </div>
                 )}
                 
-                {/* Step 2: Warranty */}
+                {/* Step 2: Insurance */}
                 {wizardStep === 1 && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2 p-4 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg mb-2 border border-indigo-200 dark:border-indigo-700">
-                      <p className="text-sm text-indigo-800 dark:text-indigo-200 font-medium">
-                        Add warranty information if available. You can skip this step if the asset doesn't have a warranty.
-                      </p>
-                    </div>
-                    <div>
-                      <Label htmlFor="warranty_expiry">Warranty Expiry Date</Label>
-                      <Input
-                        id="warranty_expiry"
-                        type="date"
-                        value={formData.warranty_expiry}
-                        onChange={(e) => setFormData({...formData, warranty_expiry: e.target.value})}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Label htmlFor="warranty_notes">Warranty Notes</Label>
-                      <Textarea
-                        id="warranty_notes"
-                        value={formData.warranty_notes}
-                        onChange={(e) => setFormData({...formData, warranty_notes: e.target.value})}
-                        placeholder="Warranty terms, coverage details, vendor contact..."
-                        rows={4}
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                {/* Step 3: Insurance */}
-                {wizardStep === 2 && (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2 p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg mb-2 border border-emerald-200 dark:border-emerald-700">
                       <p className="text-sm text-emerald-800 dark:text-emerald-200 font-medium">
@@ -1025,7 +1134,7 @@ export default function AssetsPage() {
                   {wizardStep === 0 ? 'Cancel' : 'Back'}
                 </Button>
                 
-                {wizardStep < 2 ? (
+                {wizardStep < 1 ? (
                   <Button 
                     type="button" 
                     className="bg-indigo-700 hover:bg-indigo-800 text-white"
@@ -1208,6 +1317,53 @@ export default function AssetsPage() {
                   </div>
                 </div>
               )}
+
+              {/* Warranty Registration Section */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" /> Warranty Registration
+                </h4>
+                
+                {warrantyStatus[selectedAsset.id] === 'checking' ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Checking warranty status...
+                  </div>
+                ) : warrantyStatus[selectedAsset.id] === 'registered' ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Warranty Registered
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      This asset has been registered in the Warranty Centre
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Button
+                      onClick={() => registerWarranty(selectedAsset)}
+                      disabled={isRegisteringWarranty}
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      {isRegisteringWarranty ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Registering...
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="h-4 w-4 mr-2" />
+                          Register Warranty
+                        </>
+                      )}
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      Register this asset in the Warranty Centre
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

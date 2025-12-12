@@ -24,7 +24,9 @@ import {
   FileWarning,
   PlusCircle,
   ArrowRight,
-  Loader2
+  Loader2,
+  ExternalLink,
+  ShieldCheck
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -235,6 +237,12 @@ export function UserDashboard() {
                 <span>My Requests</span>
               </Button>
             </Link>
+            <a href="https://server11.eport.ws/logout" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">
+                <ShieldCheck className="h-6 w-6 text-emerald-600" />
+                <span className="flex items-center gap-1">Warranty Centre <ExternalLink className="h-3 w-3" /></span>
+              </Button>
+            </a>
           </div>
         </CardContent>
       </Card>

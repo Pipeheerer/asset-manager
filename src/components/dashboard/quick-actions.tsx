@@ -30,7 +30,9 @@ import {
   Tags, 
   Building2,
   Zap,
-  Loader2
+  Loader2,
+  ShieldCheck,
+  ExternalLink
 } from 'lucide-react'
 import { createAsset, createCategory, createDepartment, getCategories, getDepartments } from '@/lib/database'
 import { supabase } from '@/lib/supabase'
@@ -43,13 +45,32 @@ interface QuickAction {
   color: string
 }
 
-const quickActions: QuickAction[] = [
+interface QuickActionItem {
+  id: string
+  title: string
+  description: string
+  icon: React.ElementType
+  color: string
+  isExternal?: boolean
+  href?: string
+}
+
+const quickActions: QuickActionItem[] = [
   {
     id: 'add-asset',
     title: 'Add Asset',
     description: 'Register a new asset',
     icon: Package,
     color: 'bg-blue-500 hover:bg-blue-600'
+  },
+  {
+    id: 'warranty-centre',
+    title: 'Warranty Centre',
+    description: 'Manage warranties',
+    icon: ShieldCheck,
+    color: 'bg-emerald-500 hover:bg-emerald-600',
+    isExternal: true,
+    href: 'https://server11.eport.ws/logout'
   },
   {
     id: 'add-user',
@@ -92,42 +113,59 @@ export function QuickActions() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {quickActions.map((action) => (
-            <Dialog 
-              key={action.id} 
-              open={openDialog === action.id} 
-              onOpenChange={(open) => setOpenDialog(open ? action.id : null)}
-            >
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="group h-auto flex-col gap-2 p-4 hover:border-blue-500 hover:bg-blue-500 dark:hover:bg-blue-600"
-                >
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${action.color} text-white transition-transform group-hover:scale-110`}>
-                    <action.icon className="h-5 w-5" />
-                  </div>
-                  <span className="text-sm font-medium text-foreground group-hover:text-white transition-colors">{action.title}</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <action.icon className="h-5 w-5" />
-                    {action.title}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {action.description}. Fill in the details below.
-                  </DialogDescription>
-                </DialogHeader>
-                
-                {/* Dynamic form based on action type */}
-                {action.id === 'add-asset' && <AssetForm onSuccess={handleSuccess} onCancel={() => setOpenDialog(null)} onFullForm={() => { setOpenDialog(null); router.push('/dashboard/assets?action=create') }} />}
-                {action.id === 'add-user' && <UserForm onSuccess={handleSuccess} onCancel={() => setOpenDialog(null)} />}
-                {action.id === 'add-category' && <CategoryForm onSuccess={handleSuccess} onCancel={() => setOpenDialog(null)} />}
-                {action.id === 'add-department' && <DepartmentForm onSuccess={handleSuccess} onCancel={() => setOpenDialog(null)} />}
-              </DialogContent>
-            </Dialog>
+            action.isExternal ? (
+              <Button
+                key={action.id}
+                variant="outline"
+                onClick={() => window.open(action.href, '_blank')}
+                className="group h-auto flex-col gap-2 p-4 hover:border-emerald-500 hover:bg-emerald-500 dark:hover:bg-emerald-600 transition-all duration-200"
+              >
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${action.color} text-white transition-transform group-hover:scale-110`}>
+                  <action.icon className="h-5 w-5" />
+                </div>
+                <span className="text-sm font-medium text-foreground group-hover:text-white transition-colors flex items-center gap-1">
+                  {action.title}
+                  <ExternalLink className="h-3 w-3" />
+                </span>
+              </Button>
+            ) : (
+              <Dialog 
+                key={action.id} 
+                open={openDialog === action.id} 
+                onOpenChange={(open) => setOpenDialog(open ? action.id : null)}
+              >
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="group h-auto flex-col gap-2 p-4 hover:border-blue-500 hover:bg-blue-500 dark:hover:bg-blue-600 transition-all duration-200"
+                  >
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${action.color} text-white transition-transform group-hover:scale-110`}>
+                      <action.icon className="h-5 w-5" />
+                    </div>
+                    <span className="text-sm font-medium text-foreground group-hover:text-white transition-colors">{action.title}</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <action.icon className="h-5 w-5" />
+                      {action.title}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {action.description}. Fill in the details below.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  {/* Dynamic form based on action type */}
+                  {action.id === 'add-asset' && <AssetForm onSuccess={handleSuccess} onCancel={() => setOpenDialog(null)} onFullForm={() => { setOpenDialog(null); router.push('/dashboard/assets?action=create') }} />}
+                  {action.id === 'add-user' && <UserForm onSuccess={handleSuccess} onCancel={() => setOpenDialog(null)} />}
+                  {action.id === 'add-category' && <CategoryForm onSuccess={handleSuccess} onCancel={() => setOpenDialog(null)} />}
+                  {action.id === 'add-department' && <DepartmentForm onSuccess={handleSuccess} onCancel={() => setOpenDialog(null)} />}
+                </DialogContent>
+              </Dialog>
+            )
           ))}
         </div>
       </CardContent>

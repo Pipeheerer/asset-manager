@@ -390,53 +390,42 @@ export default function MaintenancePage() {
         </Dialog>
       </div>
 
-      {/* Warranty & Insurance Alerts - Card-based layout */}
-      {(warrantyExpiring.length > 0 || insuranceExpiring.length > 0) && (
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Warranty Expiring Card */}
-          {warrantyExpiring.length > 0 && (
-            <Card className="border-orange-300 dark:border-orange-700">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30">
-                    <FileWarning className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                  </div>
-                  <span className="text-foreground">Warranty Expiring</span>
-                  <Badge variant="outline" className="ml-auto bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 border-orange-300">
-                    {warrantyExpiring.length}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-2">
-                  {warrantyExpiring.slice(0, 5).map((asset: any) => {
-                    const isExpired = new Date(asset.warranty_expiry) < new Date()
-                    return (
-                      <div key={asset.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                        <span className="text-sm font-medium text-foreground">{asset.name}</span>
-                        {isExpired ? (
-                          <Badge variant="destructive" className="text-xs">Expired</Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            {format(new Date(asset.warranty_expiry), 'MMM d, yyyy')}
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-                {warrantyExpiring.length > 5 && (
-                  <Link href="/dashboard/assets?warranty_expiring=true" className="text-sm text-primary hover:underline mt-3 inline-block">
-                    View all {warrantyExpiring.length} assets →
-                  </Link>
-                )}
-              </CardContent>
-            </Card>
-          )}
+      {/* Warranty Centre Link & Insurance Alerts - Card-based layout */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Warranty Centre Card */}
+        <Card className="border-emerald-300 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/30 dark:to-emerald-900/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <span className="text-foreground">Warranty Centre</span>
+            </CardTitle>
+            <CardDescription>
+              Manage all asset warranties in one place
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="text-sm text-muted-foreground mb-4">
+              Track warranty expiry dates, get notifications, and manage warranty details for all your registered assets.
+            </p>
+            <a 
+              href="https://server11.eport.ws/logout" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition"
+            >
+              Open Warranty Centre
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </CardContent>
+        </Card>
 
-          {/* Insurance Expiring Card */}
-          {insuranceExpiring.length > 0 && (
-            <Card className="border-red-300 dark:border-red-700">
+        {/* Insurance Expiring Card */}
+        {insuranceExpiring.length > 0 && (
+          <Card className="border-red-300 dark:border-red-700">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
@@ -475,7 +464,6 @@ export default function MaintenancePage() {
             </Card>
           )}
         </div>
-      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">

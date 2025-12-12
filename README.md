@@ -2,6 +2,13 @@
 
 A Demo full-stack web application for enterprise asset management built with Next.js and Supabase.
 
+<<<<<<< HEAD
+### Live Demo
+View Live App: https://asset-manager-system.vercel.app/
+
+![Admin dashboard](admin-dashboard.png)
+
+=======
 ## Live Demo
 
 🔗 **[View Live App](https://asset-manager-system.vercel.app/)**
@@ -19,6 +26,7 @@ A Demo full-stack web application for enterprise asset management built with Nex
 
 #### Maintenance Tracking
 ![Maintenance](screenshots/maintenance.png)
+>>>>>>> e9ef5aa (Add screenshots to README)
 
 ## Features
 

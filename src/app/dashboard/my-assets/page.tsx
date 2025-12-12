@@ -15,7 +15,9 @@ import {
   FileWarning,
   AlertCircle,
   Loader2,
-  Eye
+  Eye,
+  ShieldCheck,
+  ExternalLink
 } from 'lucide-react'
 import { format } from 'date-fns'
 import Link from 'next/link'
@@ -33,6 +35,8 @@ export default function MyAssetsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedAsset, setSelectedAsset] = useState<AssetWithDetails | null>(null)
+  const [warrantyStatus, setWarrantyStatus] = useState<Record<string, 'registered' | 'not_registered' | 'checking'>>({}) 
+  const [isRegisteringWarranty, setIsRegisteringWarranty] = useState(false)
 
   useEffect(() => {
     const fetchAssets = async () => {
@@ -41,6 +45,21 @@ export default function MyAssetsPage() {
       try {
         const userAssets = await getUserAssignedAssets(user.id)
         setAssets(userAssets)
+        
+        // Check warranty status for each asset
+        for (const asset of userAssets) {
+          try {
+            const response = await fetch(`/api/warranty/register?assetId=${asset.id}`)
+            const data = await response.json()
+            if (data.success && data.data) {
+              setWarrantyStatus(prev => ({ ...prev, [asset.id]: 'registered' }))
+            } else {
+              setWarrantyStatus(prev => ({ ...prev, [asset.id]: 'not_registered' }))
+            }
+          } catch {
+            setWarrantyStatus(prev => ({ ...prev, [asset.id]: 'not_registered' }))
+          }
+        }
       } catch (error) {
         console.error('Error fetching assets:', error)
       } finally {
@@ -50,6 +69,51 @@ export default function MyAssetsPage() {
 
     fetchAssets()
   }, [user])
+
+  const registerWarranty = async (asset: AssetWithDetails) => {
+    if (!user?.email) return
+    
+    setIsRegisteringWarranty(true)
+    try {
+      const response = await fetch('/api/warranty/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          asset_id: asset.id,
+          asset_name: asset.name,
+          serial_number: asset.serial_number || null,
+          category: asset.category?.name || null,
+          department: asset.department?.name || null,
+          location: asset.location || null,
+          date_purchased: asset.date_purchased || null,
+          cost: asset.cost || null,
+          warranty_start: asset.date_purchased || null,
+          warranty_expiry: asset.warranty_expiry || null,
+          warranty_notes: asset.warranty_notes || null,
+          warranty_provider: null,
+          warranty_type: 'manufacturer',
+          warranty_terms: null,
+          warranty_contact: null,
+          warranty_claim_url: null,
+          registered_by_email: user.email
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        setWarrantyStatus(prev => ({ ...prev, [asset.id]: 'registered' }))
+        alert('Warranty registered successfully! You can add more details in the Warranty Centre.')
+      } else {
+        alert(data.message || 'Failed to register warranty')
+      }
+    } catch (error) {
+      console.error('Warranty registration error:', error)
+      alert('Failed to connect to warranty service')
+    } finally {
+      setIsRegisteringWarranty(false)
+    }
+  }
 
   // Redirect admin users
   if (role === 'admin') {
@@ -98,11 +162,20 @@ export default function MyAssetsPage() {
             Assets currently assigned to you
           </p>
         </div>
-        <Link href="/dashboard/requests?action=new">
-          <Button className="bg-emerald-600 hover:bg-emerald-700">
-            Request New Asset
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <a href="https://server11.eport.ws/logout" target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" className="gap-2 border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" />
+              Warranty Centre
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          </a>
+          <Link href="/dashboard/requests?action=new">
+            <Button className="bg-emerald-600 hover:bg-emerald-700">
+              Request New Asset
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -226,6 +299,27 @@ export default function MyAssetsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      {/* Warranty Status/Register Button */}
+                      {warrantyStatus[asset.id] === 'registered' ? (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700">
+                          <ShieldCheck className="h-3 w-3 mr-1" />
+                          Warranty Registered
+                        </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); registerWarranty(asset); }}
+                          disabled={isRegisteringWarranty}
+                          className="h-6 px-2 text-xs bg-blue-600 hover:bg-blue-700 text-white border-0"
+                        >
+                          {isRegisteringWarranty ? (
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <ShieldCheck className="h-3 w-3 mr-1" />
+                          )}
+                          Register Warranty
+                        </Button>
+                      )}
                       <div className="text-right">
                         <p className="font-medium text-foreground">${asset.cost?.toLocaleString() || 0}</p>
                         <p className="text-xs text-muted-foreground">
@@ -361,8 +455,29 @@ export default function MyAssetsPage() {
                 </div>
               </div>
 
-              {/* Action Button */}
-              <div className="border-t pt-4">
+              {/* Action Buttons */}
+              <div className="border-t pt-4 space-y-3">
+                {/* Warranty Registration */}
+                {warrantyStatus[selectedAsset.id] === 'registered' ? (
+                  <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                    <span className="text-emerald-700 dark:text-emerald-300 font-medium">Warranty Registered in Warranty Centre</span>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => registerWarranty(selectedAsset)}
+                    disabled={isRegisteringWarranty}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    {isRegisteringWarranty ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <ShieldCheck className="h-4 w-4 mr-2" />
+                    )}
+                    Register Warranty
+                  </Button>
+                )}
+                
                 <Link href={`/dashboard/issues/new?asset=${selectedAsset.id}`}>
                   <Button variant="outline" className="w-full">
                     <AlertCircle className="h-4 w-4 mr-2" />

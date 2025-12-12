@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/app/providers'
 import { Button } from '@/components/ui/button'
@@ -14,21 +15,28 @@ import {
   BarChart3, 
   Users,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Clock
 } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [mounted, setMounted] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
   const { loading: authLoading } = useAuth()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    // Check if redirected due to session timeout
+    if (searchParams.get('reason') === 'timeout') {
+      setSessionExpired(true)
+    }
+  }, [searchParams])
 
   if (authLoading) {
     return (
@@ -163,6 +171,15 @@ export default function LoginPage() {
               <p className="text-slate-400">Sign in to continue to your dashboard</p>
             </div>
 
+            {sessionExpired && (
+              <Alert className="mb-6 bg-amber-500/10 border-amber-500/20">
+                <Clock className="h-4 w-4 text-amber-400" />
+                <AlertDescription className="text-amber-300">
+                  Your session has expired due to inactivity. Please sign in again.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-slate-300">Email address</Label>
@@ -229,5 +246,20 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <Shield className="h-12 w-12 text-emerald-500" />
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   )
 }
