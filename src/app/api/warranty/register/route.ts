@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // Calculate warranty duration in months if we have start and expiry dates
+    
     let warranty_duration_months = body.warranty_duration_months
     if (!warranty_duration_months && body.warranty_start && body.warranty_expiry) {
       const start = new Date(body.warranty_start)
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       warranty_duration_months = Math.round((expiry.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30))
     }
     
-    // Prepare warranty data with all fields
+    
     const warrantyData = {
       asset_id: body.asset_id,
       asset_name: body.asset_name,

@@ -215,7 +215,7 @@ export function AnalyticsCharts({
                   tick={{ fontSize: 12 }}
                 />
                 <Tooltip 
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, 'Spent']}
+                  formatter={(value: number | undefined) => value !== undefined ? [`$${value.toLocaleString()}`, 'Spent'] : ['N/A', 'Spent']}
                   contentStyle={{ 
                     backgroundColor: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
